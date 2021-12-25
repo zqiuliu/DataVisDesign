@@ -1,0 +1,97 @@
+* {
+    margin: 0px;
+    padding: 0px;
+}
+
+body {
+    width: 100%;
+    height: 850px;
+    background-color: #FFFFFF;
+}
+
+#title {
+    text-align: center;
+    height: 25px;
+    font-size: 20px;
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: 700;
+    color: black;
+}
+
+#view {
+    display: flex;
+    height: 850px;
+}
+
+#leftview {
+    /* 左边占总宽度60% */
+    flex: 3;
+    display: flex;
+    flex-direction: column;
+}
+
+#rightview {
+    /* 右边占总宽度40% */
+    flex: 3;
+    display: flex;
+    flex-direction: column;
+}
+
+#topleft {
+    /* 左上占总高度70% */
+    flex: 5;
+    border: 1px dotted white;
+}
+
+#bottomleft {
+    /* 左下占总高度30% */
+    flex: 4;
+    border: 1px dotted white;
+}
+
+#topright {
+    /* 右上占总高度50% */
+    flex: 5;
+    border: 1px dotted white;
+}
+
+#bottomright {
+    /* 右下占总高度50% */
+    flex: 5;
+    border: 1px dotted white;
+}
+
+.button {
+    /* 按钮美化 */
+    width: 100px;
+    /* 宽度 */
+    height: 20px;
+    /* 高度 */
+    border-width: 0px;
+    /* 边框宽度 */
+    border-radius: 3px;
+    /* 边框半径 */
+    background: #1E90FF;
+    /* 背景颜色 */
+    cursor: pointer;
+    /* 鼠标移入按钮范围时出现手势 */
+    outline: none;
+    /* 不显示轮廓线 */
+    font-family: Microsoft YaHei;
+    /* 设置字体 */
+    color: white;
+    /* 字体颜色 */
+    font-size: 10px;
+    /* 字体大小 */
+}
+
+.button:hover {
+    /* 鼠标移入按钮范围时改变颜色 */
+    background: #5599FF;
+}
+.bottomtitle{
+    text-align: center;
+    font-size: 20px;
+    font-family: 'Courier New', Courier, monospace;
+    color: #1E90FF;
+}

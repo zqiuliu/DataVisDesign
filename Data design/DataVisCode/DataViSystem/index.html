@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset='utf-8'>
+    <title></title>
+    <script type='text/javascript' src='../Resources/lib/d3.js'></script>
+    <script type="text/javascript" src="../Resources/Echarts/echarts.js"></script>
+    <script type="text/javascript" src='../Resources/lib/d3.layout.cloud.js'></script>
+    <link rel="stylesheet" href="index.css">
+</head>
+
+<body>
+    <header id='title'>全国11月份新冠疫情数据可视化分析</header>
+    <main id='view'>
+        <div id='leftview'>
+            <div id='topleft'></div>
+            <div id='bottomleft'>
+                <button class="button" value="确诊人数分析" onclick="button1click()">确诊人数分析</button>
+                <button class="button" value="死亡人数分析" onclick="button2click()">死亡人数分析</button>
+                <button class="button" value="治愈人数分析" onclick="button3click()">治愈人数分析</button>
+                <h2 class="bottomtitle">疫情热点话题</h2>
+            </div>
+        </div>
+        <div id='rightview'>
+            <div id='topright'></div>
+            <div id='bottomright'>
+            </div>
+        </div>
+    </main>
+
+    <script type='text/javascript'>
+        dataprovince = new Array//用于统计每个省疫情的相关情况
+        datacity = new Array//用于统计每个省的市的相关情况
+        //每个省的疫情相关情况的数据读取
+        d3.csv('../Resources/data/ChinaCovid-19.csv').then(async function (data) {
+            dataprocess(data)
+            Earthprocess(dataprovince)
+            tuxing(dataprovince)
+            renderWordcloud()
+        })
+
+        //ChinaCovid-19数据处理每个省的数据处理
+        function dataprocess(data) {
+            console.log(data)
+            data.forEach(row => {
+                const { 省, 新增确诊, 累计确诊, 死亡, 治愈, 死亡率, 治愈率 } = row//解构赋值
+                const obj = new Object
+                obj.province = 省
+                obj.day = +新增确诊
+                obj.cases = +累计确诊
+                obj.death = +死亡
+                obj.recovered = +治愈
+                obj.deathrate = +死亡率
+                obj.recoveredrate = +治愈率
+                dataprovince.push(obj)
+            });
+        }
+        //ChinaCovid-19City每个省每个市的数据处理
+        d3.csv('../Resources/data/ChinaCovid-19City.csv').then(async function (data) {
+            data.forEach(row => {
+                const { 省, 市, 新增确诊, 累计确诊, 死亡, 治愈, 死亡率, 治愈率 } = row//解构赋值
+                const obj = new Object
+                obj.province = 省
+                obj.city = 市
+                obj.day = +新增确诊
+                obj.cases = +累计确诊
+                obj.death = +死亡
+                obj.recovered = +治愈
+                obj.deathrate = +死亡率
+                obj.recoveredrate = +治愈率
+                datacity.push(obj)
+            })
+        })
+
+
+
+        /****************************************************************************/
+        //绘制词云模块
+        function renderWordcloud() {
+            const h = document.getElementById('bottomleft').clientHeight
+            const w = document.getElementById('bottomleft').clientWidth
+            const svg = d3.select('#bottomleft')
+                .append('svg')
+                .attr('width', `${w}px`)
+                .attr('height', `${h}px`)
+
+            d3.json('../Resources/data/wordcloud.json').then(function (data) {
+
+                const fill = d3.scaleOrdinal(d3.schemeCategory10)
+
+                const layout = d3.layout.cloud()
+                    .size([600, 400])
+                    .words(data)
+                    .padding(5)
+                    .rotate(() => ~~(Math.random() * 2) * 90)
+                    .font('Impact')
+                    .fontSize(d => d.size)
+                    .on('end', draw)
+
+                const wordcloudGroup = svg.append('g').attr('transform', `translate(${layout.size()[0] / 2} ,${layout.size()[1] / 2})`)
+
+                layout.start()
+
+                function draw(words) {
+                    wordcloudGroup.selectAll('text')
+                        .data(words)
+                        .enter().append('text')
+                        .style('font-size', d => `${d.size}px`)
+                        .style('font-family', 'Impact')
+                        .style('fill', (d, i) => fill(i))
+                        .attr('text-anchor', 'middle')
+                        .attr('transform', d => `translate(${d.x - 2}, ${d.y}) rotate(${d.rotate})`)
+                        .text(d => d.text)
+                }
+            })
+        }
+        /**************************************************************************/
+
+
+        //饼状图分析获取数据函数
+        function getdata0(data) {
+            let arrystr = []
+            for (let i = 0; i < data.length; i++) {
+                let str = {}
+                str.value = data[i].deathrate
+                str.name = data[i].province
+                arrystr.push(str)
+            }
+            return arrystr
+        }
+        function getdata1(data) {
+            let arrystr = []
+            for (let i = 0; i < data.length; i++) {
+                let str = {}
+                str.value = data[i].recoveredrate
+                str.name = data[i].province
+                arrystr.push(str)
+            }
+            return arrystr
+        }
+        function tuxing(data) {
+            // 基于准备好的dom，初始化echarts实例
+            var myChart = echarts.init(document.getElementById('topright'));
+            option = {
+                title: {
+                    text: '死亡率与治愈率趋势分析',
+                    subtext: '全国11月份',
+                    left: 'center'
+                },
+                tooltip: {
+                    trigger: 'item',
+                    formatter: '{a} <br/>{b} : {c} ({d}%)'
+                },
+                legend: {
+                    left: 'center',
+                    top: 'bottom',
+                    data: []
+                },
+                series: [
+                    {
+                        name: '新冠死亡率',
+                        type: 'pie',
+                        radius: [20, 140],
+                        center: ['25%', '50%'],
+                        roseType: 'radius',
+                        itemStyle: {
+                            borderRadius: 5
+                        },
+                        label: {
+                            show: true
+                        },
+                        emphasis: {
+                            label: {
+                                show: true
+                            }
+                        },
+                        data: getdata0(data)
+                    },
+                    {
+                        name: '新冠治愈率',
+                        type: 'pie',
+                        radius: [20, 140],
+                        center: ['75%', '50%'],
+                        roseType: 'area',
+                        itemStyle: {
+                            borderRadius: 5
+                        },
+                        data: getdata1(data)
+                    }
+                ]
+            };
+            //使用刚指定的配置项和数据显示图表。
+            myChart.setOption(option);
+        }
+
+        /*******************************************************************/
+        //按钮点击事件
+        function button1click() {
+            document.getElementsByTagName("h2")[0].innerText = '全国前10累计确诊人数'
+            d3.select("#bottomleft").select("svg").remove()
+            tiaoxingtu1(dataprovince)
+        }
+        function button2click() {
+            document.getElementsByTagName("h2")[0].innerText = '全国前10累计死亡人数';
+            d3.select("#bottomleft").select("svg").remove()
+            tiaoxingtu2(dataprovince)
+        }
+        function button3click() {
+            document.getElementsByTagName("h2")[0].innerText = '全国前10累计治愈人数';
+            d3.select("#bottomleft").select("svg").remove()
+            tiaoxingtu3(dataprovince)
+        }
+        /*******************************************************************/
+
+
+        //绘制地图
+        function Earthprocess(data) {
+            const h = document.getElementById('topleft').clientHeight
+            const w = document.getElementById('topleft').clientWidth
+            //定义svg的高度和宽度
+            const svg = d3.select('#topleft').append('svg')
+                .attr('width', `${w}px`)
+                .attr('height', `${h}px`)
+            //定义地图的投影
+            const margin = { top: 10, left: 10, bottom: 10, right: 10 }
+            const innerWidth = w - margin.left - margin.right
+            const innerHeight = h - margin.top - margin.bottom
+
+            const projection = d3.geoMercator()
+                .center([103, 39])
+                .scale(600)
+                .translate([innerWidth / 2, innerHeight / 2.1])
+            //定义地形路径生成器
+            const path = d3.geoPath().projection(projection)
+            //绘制地图
+            d3.json('../Resources/data/China.geo.json').then(data => {
+                //创建线性比例尺子 
+                let colorarry1 = new Array//根据China.geo.json按次序确定每个省的累计确诊或者新增确诊人数
+                colorarry = dataprovince
+                for (let i = 0; i < data.features.length; i++) {
+                    for (let j = 0; j < colorarry.length; j++) {
+                        if (data.features[i].properties.name == colorarry[j].province) {
+                            colorarry1.push(colorarry[j].cases)
+                        }
+                    }
+                }
+                const colorscale = d3.scaleLinear([0, d3.max(colorarry1)], ['#E2EBF4', 'red'])
+                svg.selectAll('path')
+                    .data(data.features)
+                    .enter()
+                    .append('path')
+                    .attr('d', path)
+                    .attr('fill', function (d, i) {
+                        return colorscale(colorarry1[i])
+                    })
+                    .attr('opacity', 0.6)
+                    .attr('stroke', '#fff')
+                    .attr('stroke-width', 1)
+                    .on('click', function (d) {
+                        let s = `${this.__data__.properties.name}`
+                        const city = []
+                        datacity.forEach(row => {
+                            if (s == row.province) {
+                                if (row.city != "地区待确认" && row.city != "境外输入") {
+                                    const obj = {}
+                                    obj.province = row.province
+                                    obj.city = row.city
+                                    obj.day = +row.day
+                                    obj.cases = +row.cases
+                                    obj.death = +row.death
+                                    obj.recovered = +row.recovered
+                                    obj.deathrate = +row.deathrate
+                                    obj.recoveredrate = +row.recoveredrate
+                                    city.push(obj)
+                                }
+                            }
+                        })
+                        //城市分析曲线图
+                        citytongji(city)
+                    })
+
+
+                //绘制文字
+                texts = svg.selectAll(".texts")
+                    .data(data.features)
+                    .enter()
+                    .append("text")
+                    .attr("class", "texts")
+                    .text(function (d) { return d.properties.name; })
+                    .attr("transform", function (d) {
+                        var centroid = path.centroid(d),
+                            x = centroid[0],
+                            y = centroid[1];
+                        if ((d.properties.name == "河北") || (d.properties.name == "澳门") || (d.properties.name == "安徽"))
+                            y = y + 25;
+                        return "translate(" + x + ", " + y + ")";
+                    })
+                    .attr('fill', 'black')
+                    .attr("font-size", "12px")
+                    .attr("font-family", "Microsoft YaHei")
+            });
+        }
+
+        //用于点击事件统计每个省的市的情况
+        function citytongji(city) {
+            data1 = d3.map(city, d => d.city)//数据抽取市city
+            data2 = d3.map(city, d => d.cases)//数据抽取市cases
+            var myChart = echarts.init(document.getElementById('bottomright'));
+            myChart.clear()
+            option = {
+                title: {
+                    text: '累计确诊人数趋势'
+                },
+                grid: {
+                    left: '10%',
+                    bottom: '35%'
+                },
+                xAxis: {
+                    type: 'category',
+                    data: data1,
+                    axisLabel: {
+                        interval: 0,//X轴信息全部展示
+                        rotate: -60,//60 标签倾斜的角度
+                    }
+                },
+                yAxis: {
+                    type: 'value'
+                },
+                series: [
+                    {
+                        data: data2,
+                        type: 'line',
+                        smooth: true
+                    }
+                ]
+            };
+            myChart.setOption(option);
+        }
+
+
+        //绘制垂直条形图
+        function tiaoxingtu1(alphabet) {
+            alphabet.sort(function (a, b) {
+                return b.cases - a.cases
+            })
+            alphabet = alphabet.slice(0, 10)
+            bottomwidth = document.getElementById('bottomleft').clientWidth
+            bottomheight = document.getElementById('bottomleft').clientHeight
+            BarChart(alphabet, {
+                x: d => d.cases,
+                y: d => d.province,
+                yDomain: d3.groupSort(alphabet, ([d]) => -d.cases, d => d.province), // sort by descending frequency
+                xFormat: "s",
+                xLabel: "全国前10累计确诊人数->",
+                width: bottomwidth,
+                height: bottomheight,
+                color: ""
+            })
+        }
+        function tiaoxingtu2(alphabet) {
+            alphabet.sort(function (a, b) {
+                return b.cases - a.cases
+            })
+            alphabet = alphabet.slice(0, 10)
+            bottomwidth = document.getElementById('bottomleft').clientWidth
+            bottomheight = document.getElementById('bottomleft').clientHeight
+            BarChart(alphabet, {
+                x: d => d.death,
+                y: d => d.province,
+                yDomain: d3.groupSort(alphabet, ([d]) => -d.death, d => d.province), // sort by descending frequency
+                xFormat: "s",
+                xLabel: "全国前10累计死亡人数->",
+                width: bottomwidth,
+                height: bottomheight,
+                color: ""
+            })
+        }
+        function tiaoxingtu3(alphabet) {
+            alphabet.sort(function (a, b) {
+                return b.cases - a.cases
+            })
+            alphabet = alphabet.slice(0, 10)
+            bottomwidth = document.getElementById('bottomleft').clientWidth
+            bottomheight = document.getElementById('bottomleft').clientHeight
+            BarChart(alphabet, {
+                x: d => d.recovered,
+                y: d => d.province,
+                yDomain: d3.groupSort(alphabet, ([d]) => -d.recovered, d => d.province), // sort by descending frequency
+                xFormat: "s",
+                xLabel: "全国前10累计治愈人数->",
+                width: bottomwidth,
+                height: bottomheight,
+                color: ""
+            })
+        }
+
+
+
+
+
+        function BarChart(data, {
+            x = d => d, // given d in data, returns the (quantitative) x-value
+            y = (d, i) => i, // given d in data, returns the (ordinal) y-value
+            title, // given d in data, returns the title text
+            marginTop = 30, // the top margin, in pixels
+            marginRight = 0, // the right margin, in pixels
+            marginBottom = 10, // the bottom margin, in pixels
+            marginLeft = 30, // the left margin, in pixels
+            width = 640, // the outer width of the chart, in pixels
+            height, // outer height, in pixels
+            xType = d3.scaleLinear, // type of x-scale
+            xDomain, // [xmin, xmax]
+            xRange = [marginLeft, width - marginRight], // [left, right]
+            xFormat, // a format specifier string for the x-axis
+            xLabel, // a label for the x-axis
+            yPadding = 0.1, // amount of y-range to reserve to separate bars
+            yDomain, // an array of (ordinal) y-values
+            yRange, // [top, bottom]
+            color = "currentColor", // bar fill color
+            titleColor = "white", // title fill color when atop bar
+            titleAltColor = "currentColor", // title fill color when atop background
+        } = {}) {
+            // Compute values.
+            const X = d3.map(data, x);
+            const Y = d3.map(data, y);
+
+            // Compute default domains, and unique the y-domain.
+            if (xDomain === undefined) xDomain = [0, d3.max(X)];
+            if (yDomain === undefined) yDomain = Y;
+            yDomain = new d3.InternSet(yDomain);
+
+            // Omit any data not present in the y-domain.
+            const I = d3.range(X.length).filter(i => yDomain.has(Y[i]));
+
+            // Compute the default height.
+            if (height === undefined) height = Math.ceil((yDomain.size + yPadding) * 25) + marginTop + marginBottom;
+            if (yRange === undefined) yRange = [marginTop, height - marginBottom];
+
+            // Construct scales and axes.
+            const xScale = xType(xDomain, xRange);
+            const yScale = d3.scaleBand(yDomain, yRange).padding(yPadding);
+            const xAxis = d3.axisTop(xScale).ticks(width / 80, xFormat);
+            const yAxis = d3.axisLeft(yScale).tickSizeOuter(0);
+
+            // Compute titles.
+            if (title === undefined) {
+                const formatValue = xScale.tickFormat(100, xFormat);
+                title = i => `${formatValue(X[i])}`;
+            } else {
+                const O = d3.map(data, d => d);
+                const T = title;
+                title = i => T(O[i], i, data);
+            }
+
+            const svg = d3.select("#bottomleft").append("svg")
+                .attr("width", width)
+                .attr("height", height)
+                .attr("viewBox", [0, 0, width, height])
+                .attr("style", "max-width: 100%; height: auto; height: intrinsic;");
+
+            svg.append("g")
+                .attr("transform", `translate(0,${marginTop})`)
+                .call(xAxis)
+                .call(g => g.select(".domain").remove())
+                .call(g => g.selectAll(".tick line").clone()
+                    .attr("y2", height - marginTop - marginBottom)
+                    .attr("stroke-opacity", 0.1))
+                .call(g => g.append("text")
+                    .attr("x", width - marginRight)
+                    .attr("y", -22)
+                    .attr("fill", "currentColor")
+                    .attr("text-anchor", "end")
+                    .attr("font-weight", "bold")
+                    .attr("font-family", "Microsoft YaHei")
+                    .text(xLabel));
+            //绘制矩形
+            svg.append("g")
+                .attr("fill", color)
+                .selectAll("rect")
+                .data(I)
+                .join("rect")
+                .attr("x", xScale(0))
+                .attr("y", i => yScale(Y[i]))
+                .attr("width", i => xScale(X[i]) - xScale(0))
+                .attr("height", yScale.bandwidth())
+                .attr('fill', (d, i) => d3.schemeCategory10[i])
+                .attr('rx', 10)
+                .attr('ry', 10)
+            //加值
+            svg.append("g")
+                .attr("fill", titleColor)
+                .attr("text-anchor", "end")
+                .attr("font-family", "sans-serif")
+                .attr("font-size", 10)
+                .selectAll("text")
+                .data(I)
+                .join("text")
+                .attr("x", i => 4.5 + xScale(X[i]))
+                .attr("y", i => yScale(Y[i]) + yScale.bandwidth() / 2)
+                .attr("dy", "0.35em")
+                .attr("dx", -4)
+                .text(title)
+                .call(text => text.filter(i => xScale(X[i]) - xScale(0) < 20) // short bars
+                    .attr("dx", +4)
+                    .attr("fill", titleAltColor)
+                    .attr("text-anchor", "start"));
+
+
+            d3.selectAll('rect')//选择第一个矩形
+                .attr('width', 0)
+                .transition()//设置动画过渡
+                .duration(1000)//设置过渡时间
+                .attr('width', i => xScale(X[i]) - xScale(0))
+
+            svg.append("g")
+                .attr("transform", `translate(${marginLeft},0)`)
+                .call(yAxis);
+
+        }
+    </script>
+</body>
+
+</html>
